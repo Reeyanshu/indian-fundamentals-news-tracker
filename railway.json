@@ -3,6 +3,5 @@
     "env": {
       "PYTHONUNBUFFERED": "1"
     }
-  },
-  "start": "python3 main.py"
+  }
 }
