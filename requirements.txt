@@ -1,5 +1,6 @@
+notion-client
+openai
 requests
 beautifulsoup4
-notion-client
-transformers
-torch
+html2text
+python-dotenv
