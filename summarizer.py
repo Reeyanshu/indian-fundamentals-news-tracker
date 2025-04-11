@@ -1,14 +1,14 @@
 from transformers import pipeline
 
-# Load the BART summarizer from Hugging Face
+# Load the summarization model (you can switch to BART, Pegasus, etc.)
 summarizer = pipeline("summarization", model="facebook/bart-large-cnn")
 
-def generate_summary(text):
-    # BART works well with inputs under 1024 tokens
-    max_chunk_size = 1000
+def summarize_article(url, title):
+    text = f"{title} - {url}"  # Replace with actual article text extraction logic
+    summary = summarizer(text, max_length=120, min_length=30, do_sample=False)[0]['summary_text']
 
-    if len(text) > max_chunk_size:
-        text = text[:max_chunk_size]  # Truncate long articles
+    reasoning = "This news may have a long-term impact based on government policy/economic indicators."
+    sector = "General"
+    impact = "Neutral"
 
-    summary = summarizer(text, max_length=300, min_length=100, do_sample=False)
-    return summary[0]['summary_text']
+    return summary, reasoning, sector, impact
