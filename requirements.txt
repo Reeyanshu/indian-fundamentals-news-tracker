@@ -1,7 +1,5 @@
-notion-client
 requests
-openai
 beautifulsoup4
-schedule
+notion-client
 transformers
 torch
