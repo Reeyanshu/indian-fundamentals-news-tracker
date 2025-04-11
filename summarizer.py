@@ -1,27 +1,14 @@
-import openai
-import os
+from transformers import pipeline
 
-openai.api_key = os.getenv("OPENAI_API_KEY")
+# Load the BART summarizer from Hugging Face
+summarizer = pipeline("summarization", model="facebook/bart-large-cnn")
 
-def generate_summary_and_reasoning(article_text):
-    prompt = f"""
-You are an expert financial analyst. Read the article below and provide:
-1. A long, clear summary in simple English (200-300 words).
-2. Whether this news is fundamentally significant in the long term. If yes, explain why.
-3. Sector involved and impact (Positive, Negative, Neutral).
+def generate_summary(text):
+    # BART works well with inputs under 1024 tokens
+    max_chunk_size = 1000
 
-Article:
-{article_text}
-"""
+    if len(text) > max_chunk_size:
+        text = text[:max_chunk_size]  # Truncate long articles
 
-    try:
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.3
-        )
-
-        return response.choices[0].message.content.strip()
-    except Exception as e:
-        print("Error summarizing:", e)
-        return None
+    summary = summarizer(text, max_length=300, min_length=100, do_sample=False)
+    return summary[0]['summary_text']
