@@ -1,82 +1,47 @@
-from news_scraper import scrape_news
-from summarizer import generate_summary_and_reasoning
-from notion_uploader import upload_to_notion
-import datetime
-import requests
+import os
+from dotenv import load_dotenv
+from scraper import scrape_all_sources
+from summarizer import summarize_article
+from notion import push_to_notion
 
-def fetch_article_text(url):
-    try:
-        res = requests.get(url, timeout=10)
-        return res.text if res.status_code == 200 else None
-    except:
-        return None
-
-def parse_summary_response(response):
-    # Assume response is well-formatted with newline sections
-    lines = response.split("\n")
-    summary = []
-    reasoning = []
-    sector = "General"
-    impact = "Neutral"
-
-    collecting_summary = True
-    for line in lines:
-        line = line.strip()
-        if not line:
-            continue
-        if "2." in line:
-            collecting_summary = False
-            continue
-        if "3." in line:
-            continue
-
-        if collecting_summary:
-            summary.append(line)
-        else:
-            reasoning.append(line)
-            if "sector" in line.lower():
-                sector = line.split(":")[-1].strip().title()
-            if "impact" in line.lower():
-                impact = line.split(":")[-1].strip().title()
-
-    return {
-        "summary": " ".join(summary),
-        "reasoning": " ".join(reasoning),
-        "sector": sector if sector else "General",
-        "impact": impact if impact in ["Positive", "Negative", "Neutral"] else "Neutral"
-    }
+# Load environment variables
+load_dotenv()
+NOTION_TOKEN = os.getenv("NOTION_TOKEN")
+NOTION_DATABASE_ID = os.getenv("NOTION_DATABASE_ID")
 
 def main():
-    print("🚀 Starting News Tracker...")
-    articles = scrape_news()
+    print("🔍 Scraping started...")
 
-    for article in articles[:5]:  # Limit to first 5 for safety
-        print(f"🔍 Processing: {article['title']}")
-        article_text = fetch_article_text(article['url'])
-        if not article_text:
-            print("❌ Failed to fetch article text.")
-            continue
+    # Step 1: Scrape all news articles
+    articles = scrape_all_sources()
 
-        summary_response = generate_summary_and_reasoning(article_text)
-        if not summary_response:
-            print("❌ Failed to summarize.")
-            continue
+    print(f"✅ Scraped {len(articles)} articles")
 
-        parsed = parse_summary_response(summary_response)
+    for article in articles:
+        try:
+            # Step 2: Summarize each article
+            summary, reasoning, sector, impact = summarize_article(article['url'], article['title'])
 
-        article_data = {
-            "title": article["title"],
-            "source": article["source"],
-            "summary": parsed["summary"],
-            "reasoning": parsed["reasoning"],
-            "sector": parsed["sector"],
-            "impact": parsed["impact"],
-            "date": datetime.date.today().isoformat()
-        }
+            # Step 3: Push to Notion
+            push_to_notion(
+                NOTION_TOKEN,
+                NOTION_DATABASE_ID,
+                {
+                    "title": article['title'],
+                    "source": article['source'],
+                    "url": article['url'],
+                    "date": article['date'],
+                    "summary": summary,
+                    "reasoning": reasoning,
+                    "sector": sector,
+                    "impact": impact
+                }
+            )
 
-        upload_to_notion(article_data)
+            print(f"✅ Pushed to Notion: {article['title']}")
 
-    print("✅ All Done!")
+        except Exception as e:
+            print(f"❌ Error processing article: {article['title']} – {e}")
 
 if __name__ == "__main__":
     main()
